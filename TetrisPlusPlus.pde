@@ -12,7 +12,11 @@ final int SOFT_DROP_INTERVAL_MS = 40;
 final int SCREEN_MENU = 0, SCREEN_GAME = 1, SCREEN_OPTIONS = 2, SCREEN_HOW_TO_PLAY = 3, SCREEN_CREDITS = 4;
 int screenState = SCREEN_MENU;
 boolean ghostEnabled = true, softDropHeld = false;
+boolean flippingEnabled = false;
+final int SIDE_TOP = -1, SIDE_BOTTOM = 1;
+int gravityDirection = SIDE_BOTTOM;
 int[][] board = new int[ROWS][COLS];
+int[][] blockSide = new int[ROWS][COLS];
 ArrayList<Tetromino> nextQueue = new ArrayList<Tetromino>();
 ArrayList<Integer> pieceBag = new ArrayList<Integer>(), colorBag = new ArrayList<Integer>();
 ActivePiece current;
@@ -96,7 +100,9 @@ void keyPressed() {
   else if (key == 'a' || key == 'A') { tryRotateCurrent(-1); }
   else if (key == 'd' || key == 'D') { tryRotateCurrent(1); }
   else if (key == 's' || key == 'S') { hardDropCurrent(); }
+  else if (key == 'f' || key == 'F') { performFlip(); }
 }
+
 void keyReleased() {
   if (keyCode == DOWN) {
     softDropHeld = false;
@@ -118,8 +124,9 @@ void mousePressed() {
     else if (buttonHit(x, y + 3 * (buttonH + gap), buttonW, buttonH)) { screenState = SCREEN_CREDITS; }
   }
   else if (screenState == SCREEN_OPTIONS) {
-    int boxX = width / 2 - 130, boxY = height / 2 - 25;
+    int boxX = width / 2 - 130, boxY = height / 2 - 80;
     if (buttonHit(boxX, boxY, 280, 32)) { ghostEnabled = !ghostEnabled; }
+    else if (buttonHit(boxX, boxY + 44, 280, 32)) { flippingEnabled = !flippingEnabled; }
     else if (backButtonHit()) { screenState = SCREEN_MENU; }
   }
   else if (screenState == SCREEN_HOW_TO_PLAY || screenState == SCREEN_CREDITS) { if (backButtonHit()) { screenState = SCREEN_MENU; } }
@@ -129,11 +136,13 @@ void resetGame() {
   for (int r = 0; r < ROWS; r++) {
     for (int c = 0; c < COLS; c++) {
       board[r][c] = 0;
+      blockSide[r][c] = 0;
     }
   }
   nextQueue.clear();
   pieceBag.clear();
   colorBag.clear();
+  gravityDirection = SIDE_BOTTOM;
   heldPiece = null;
   current = null;
   score = 0;

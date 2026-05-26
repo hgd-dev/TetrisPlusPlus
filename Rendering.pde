@@ -18,17 +18,18 @@ void drawCurrentPiece() {
   int[][] cells = getCells(current.kind, current.rot);
   for (int i = 0; i < 4; i++) {
     int c = current.col + cells[i][0], r = current.row + cells[i][1];
-    if (r >= 0) { drawBlockPixels(gridToPixelX(c), gridToPixelY(r), current.pieceColor, 255); }
+    if (r >= 0 && r < ROWS) { drawBlockPixels(gridToPixelX(c), gridToPixelY(r), current.pieceColor, 255); }
   }
 }
 void drawGhostPiece() {
   if (!ghostEnabled || current == null || gameOver) { return; }
   int ghostRow = current.row;
-  while (canPlace(current, current.col, ghostRow + 1, current.rot)) { ghostRow++; }
+  int dy = fallDirection();
+  while (canPlace(current, current.col, ghostRow + dy, current.rot)) { ghostRow += dy; }
   int[][] cells = getCells(current.kind, current.rot);
   for (int i = 0; i < 4; i++) {
     int c = current.col + cells[i][0], r = ghostRow + cells[i][1];
-    if (r >= 0) { drawBlockPixels(gridToPixelX(c), gridToPixelY(r), current.pieceColor, 65); }
+    if (r >= 0 && r < ROWS) { drawBlockPixels(gridToPixelX(c), gridToPixelY(r), current.pieceColor, 65); }
   }
 }
 void drawSidePanel() {
@@ -79,6 +80,8 @@ void drawSidePanel() {
   y += 17;
   text("Down soft drop", SIDE_X, y);
   y += 17;
+  text("F flip", SIDE_X, y);
+  y += 17;
   text("Esc menu", SIDE_X, y);
   y += 17;
   text("R restart", SIDE_X, y);
@@ -115,22 +118,14 @@ void drawOptionsScreen() {
   fill(255);
   textSize(42);
   text("Options", width / 2, 90);
-  int boxX = width / 2 - 130, boxY = height / 2 - 25;
-  noStroke();
-  fill(235);
-  textAlign(LEFT, CENTER);
-  textSize(20);
-  text("Ghost piece", boxX + 42, boxY + 14);
-  stroke(235);
-  strokeWeight(3);
-  if (ghostEnabled) { fill(80, 180, 110); }
-  else { fill(35); }
-  rect(boxX, boxY, 26, 26, 4);
-  if (ghostEnabled) {
-    stroke(255);
-    strokeWeight(4);
-    line(boxX + 6, boxY + 14, boxX + 11, boxY + 20);
-    line(boxX + 11, boxY + 20, boxX + 21, boxY + 7);
+  int boxX = width / 2 - 130, boxY = height / 2 - 80;
+  drawCheckboxOption("Ghost piece", boxX, boxY, ghostEnabled);
+  drawCheckboxOption("Flipping", boxX, boxY + 44, flippingEnabled);
+  if (flippingEnabled) {
+    fill(190);
+    textAlign(LEFT, TOP);
+    textSize(13);
+    text("Press F during play to reverse gravity.", boxX, boxY + 88, 300, 50);
   }
   noStroke();
 }
@@ -145,9 +140,10 @@ void drawHowToPlayScreen() {
     "S: hard drop\n" +
     "Up Arrow: hold the current piece, or swap if hold is already filled\n" +
     "Down Arrow: soft drop / speed up falling\n" +
+    "F: flip, if Flipping is enabled in Options\n" +
     "R: restart during a game\n" +
     "Esc: return to the menu\n\n" +
-    "The ghost piece shows where the current piece will land. You can turn it on or off in Options.";
+    "The ghost piece shows where the current piece will land. You can turn it on or off in Options. Flipping reverses gravity.";
   drawTextPage("How to Play", body);
 }
 void drawCreditsScreen() {
@@ -234,3 +230,40 @@ void drawBlockPixels(int x, int y, int pieceColor, int alphaValue) {
 }
 int gridToPixelX(int c) { return BOARD_X + BORDER + c * (CELL + BORDER); }
 int gridToPixelY(int r) { return BOARD_Y + BORDER + r * (CELL + BORDER); }
+
+void drawCheckboxOption(String label, int x, int y, boolean checked) {
+  noStroke();
+  fill(235);
+  textAlign(LEFT, CENTER);
+  textSize(20);
+  text(label, x + 42, y + 14);
+  stroke(235);
+  strokeWeight(3);
+  if (checked) { fill(80, 180, 110); }
+  else { fill(35); }
+  rect(x, y, 26, 26, 4);
+  if (checked) {
+    stroke(255);
+    strokeWeight(4);
+    line(x + 6, y + 14, x + 11, y + 20);
+    line(x + 11, y + 20, x + 21, y + 7);
+  }
+  noStroke();
+}
+void drawRadioOption(String label, int x, int y, boolean selected) {
+  noStroke();
+  fill(225);
+  textAlign(LEFT, CENTER);
+  textSize(18);
+  text(label, x + 36, y + 14);
+  stroke(235);
+  strokeWeight(3);
+  fill(35);
+  ellipse(x + 13, y + 13, 24, 24);
+  if (selected) {
+    noStroke();
+    fill(80, 180, 110);
+    ellipse(x + 13, y + 13, 12, 12);
+  }
+  noStroke();
+}
