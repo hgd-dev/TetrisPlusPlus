@@ -1,16 +1,11 @@
 final int I = 0, J = 1, L = 2, O = 3, S = 4, T = 5, Z = 6;
-final String[] KIND_NAMES = {"I", "J", "L", "O", "S", "T", "Z"};
+final String[] kindNames = {"I", "J", "L", "O", "S", "T", "Z"};
 class Tetromino {
   int kind, pieceColor;
   Tetromino(int kind, int pieceColor) {
     this.kind = kind;
     this.pieceColor = pieceColor;
   }
-}
-class ActivePiece extends Tetromino {
-  int col, row, rot;
-  ActivePiece(int kind, int pieceColor) { super(kind, pieceColor); }
-  Tetromino toTetromino() { return new Tetromino(kind, pieceColor); }
 }
 int[][] getCells(int kind, int rot) {
   rot = ((rot % 4) + 4) % 4;

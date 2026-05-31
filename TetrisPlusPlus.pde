@@ -1,32 +1,32 @@
 import java.util.Collections;
 import java.util.ArrayList;
-final int COLS = 10, ROWS = 20;
-final int CELL = 28;
-final int BORDER = 3;
-final int BOARD_X = 16, BOARD_Y = 16;
-final int BOARD_W = BORDER + COLS * (CELL + BORDER), BOARD_H = BORDER + ROWS * (CELL + BORDER);
-final int SIDE_X = BOARD_X + BOARD_W + 24;
-final int LOCK_DELAY_MS = 500;
-final int MAX_LOCK_RESETS = 15;
-final int SOFT_DROP_INTERVAL_MS = 40;
-final int SCREEN_MENU = 0, SCREEN_GAME = 1, SCREEN_OPTIONS = 2, SCREEN_HOW_TO_PLAY = 3, SCREEN_CREDITS = 4;
-int screenState = SCREEN_MENU;
+final int m = 10, n = 20;
+final int cell = 28;
+final int border = 3;
+final int bX = 16, bY = 16;
+final int bW = border + m * (cell + border), bH = border + n * (cell + border);
+final int side = bX + bW + 24;
+final int lockDelay = 500;
+final int maxLRes = 15;
+final int softDropT = 40;
+final int screenMenu = 0, screenGame = 1, screenOpts = 2, screenHTP = 3, screenCreds = 4;
+int screenState = screenMenu;
 boolean ghostEnabled = true, softDropHeld = false;
 boolean flippingEnabled = false;
-final int SIDE_TOP = -1, SIDE_BOTTOM = 1;
-int gravityDirection = SIDE_BOTTOM;
-int[][] board = new int[ROWS][COLS];
-int[][] blockSide = new int[ROWS][COLS];
-ArrayList<Tetromino> nextQueue = new ArrayList<Tetromino>();
-ArrayList<Integer> pieceBag = new ArrayList<Integer>(), colorBag = new ArrayList<Integer>();
+final int flipGrav = 0, flipBoard = 1;
+int flipMode = flipGrav;
+final int sTop = -1, sBottom = 1;
+int gravityDirection = sBottom;
+int[][] board = new int[n][m];
+int[][] blockSide = new int[n][m];
+ArrayList <Tetromino> nextQueue = new ArrayList<Tetromino>();
+ArrayList <Integer> pieceBag = new ArrayList<Integer>(), colorBag = new ArrayList<Integer>();
 ActivePiece current;
 Tetromino heldPiece;
-boolean holdUsedThisPiece = false, gameOver = false;
+boolean holdUsed = false, gameOver = false;
 long score = 0;
-int lines = 0;
-int level = 1;
-int lastFallTime = 0;
-int lockStartTime = -1;
+int lines = 0, level = 1;
+int lastFallTime = 0, lockStartTime = -1;
 int lockResets = 0;
 int[] palette;
 PFont uiFont;
@@ -47,108 +47,75 @@ void setup() {
 }
 void draw() {
   background(18);
-  if (screenState == SCREEN_MENU) {
-    drawMenuScreen();
-    return;
-  }
-  if (screenState == SCREEN_OPTIONS) {
-    drawOptionsScreen();
-    return;
-  }
-  if (screenState == SCREEN_HOW_TO_PLAY) {
-    drawHowToPlayScreen();
-    return;
-  }
-  if (screenState == SCREEN_CREDITS) {
-    drawCreditsScreen();
-    return;
-  }
-  if (screenState == SCREEN_GAME) {
-    if (!gameOver) {
-      updateGravityAndLock();
-    }
+  if (screenState == screenMenu) { drawMenuScreen(); return; }
+  if (screenState == screenOpts) { drawOptionsScreen(); return; }
+  if (screenState == screenHTP) { drawHowToPlayScreen(); return; }
+  if (screenState == screenCreds) { drawCreditsScreen(); return; }
+  if (screenState == screenGame) {
+    if (!gameOver) { updateGL(); }
     drawBoard();
-    drawGhostPiece();
-    drawCurrentPiece();
+    drawGhost();
+    drawCur();
     drawSidePanel();
     if (gameOver) { drawGameOverOverlay(); }
   }
 }
 void keyPressed() {
-  if (screenState != SCREEN_GAME) {
-    if (key == ESC) {
-      key = 0;
-      screenState = SCREEN_MENU;
-    }
+  if (screenState != screenGame) {
+    if (key == ESC) { key = 0; screenState = screenMenu; }
     return;
   }
-  if (key == ESC) {
-    key = 0;
-    screenState = SCREEN_MENU;
-    softDropHeld = false;
-    return;
-  }
-  if (key == 'r' || key == 'R') {
-    resetGame();
-    return;
-  }
+  if (key == ESC) { key = 0; screenState = screenMenu; softDropHeld = false; return; }
+  if (key == 'r' || key == 'R') { resetGame(); return; }
   if (gameOver || current == null) return;
-  if (keyCode == LEFT) { tryMoveCurrent(-1, 0, true); }
-  else if (keyCode == RIGHT) { tryMoveCurrent(1, 0, true); }
-  else if (keyCode == UP) { holdCurrentPiece(); }
+  if (keyCode == LEFT) { moveCur(-1, 0, true); }
+  else if (keyCode == RIGHT) { moveCur(1, 0, true); }
+  else if (keyCode == UP) { holdCur(); }
   else if (keyCode == DOWN) { softDropHeld = true; }
-  else if (key == 'a' || key == 'A') { tryRotateCurrent(-1); }
-  else if (key == 'd' || key == 'D') { tryRotateCurrent(1); }
-  else if (key == 's' || key == 'S') { hardDropCurrent(); }
+  else if (key == 'a' || key == 'A') { rotCur(-1); }
+  else if (key == 'd' || key == 'D') { rotCur(1); }
+  else if (key == 's' || key == 'S') { hardDropCur(); }
   else if (key == 'f' || key == 'F') { performFlip(); }
 }
-
-void keyReleased() {
-  if (keyCode == DOWN) {
-    softDropHeld = false;
-  }
-}
+void keyReleased() { if (keyCode == DOWN) { softDropHeld = false; } }
 void mousePressed() {
-  if (screenState == SCREEN_MENU) {
-    int buttonW = 220;
-    int buttonH = 46;
-    int gap = 14;
-    int x = width / 2 - buttonW / 2;
-    int y = height / 2 - 60;
+  if (screenState == screenMenu) {
+    int buttonW = 220, buttonH = 46, gap = 14;
+    int x = width / 2 - buttonW / 2, y = height / 2 - 60;
     if (buttonHit(x, y, buttonW, buttonH)) {
       resetGame();
-      screenState = SCREEN_GAME;
+      screenState = screenGame;
     }
-    else if (buttonHit(x, y + buttonH + gap, buttonW, buttonH)) { screenState = SCREEN_OPTIONS; }
-    else if (buttonHit(x, y + 2 * (buttonH + gap), buttonW, buttonH)) { screenState = SCREEN_HOW_TO_PLAY; }
-    else if (buttonHit(x, y + 3 * (buttonH + gap), buttonW, buttonH)) { screenState = SCREEN_CREDITS; }
+    else if (buttonHit(x, y + buttonH + gap, buttonW, buttonH)) { screenState = screenOpts; }
+    else if (buttonHit(x, y + 2 * (buttonH + gap), buttonW, buttonH)) { screenState = screenHTP; }
+    else if (buttonHit(x, y + 3 * (buttonH + gap), buttonW, buttonH)) { screenState = screenCreds; }
   }
-  else if (screenState == SCREEN_OPTIONS) {
+  else if (screenState == screenOpts) {
     int boxX = width / 2 - 130, boxY = height / 2 - 80;
     if (buttonHit(boxX, boxY, 280, 32)) { ghostEnabled = !ghostEnabled; }
-    else if (buttonHit(boxX, boxY + 44, 280, 32)) { flippingEnabled = !flippingEnabled; }
-    else if (backButtonHit()) { screenState = SCREEN_MENU; }
+    else if (buttonHit(boxX, boxY + 44, 280, 32)) {
+      flippingEnabled = !flippingEnabled;
+      if (!flippingEnabled) { gravityDirection = sBottom; }
+    }
+    else if (flippingEnabled && buttonHit(boxX + 28, boxY + 88, 230, 30)) { flipMode = flipGrav; }
+    else if (flippingEnabled && buttonHit(boxX + 28, boxY + 122, 230, 30)) { flipMode = flipBoard; gravityDirection = sBottom; }
+    else if (backButtonHit()) { screenState = screenMenu; }
   }
-  else if (screenState == SCREEN_HOW_TO_PLAY || screenState == SCREEN_CREDITS) { if (backButtonHit()) { screenState = SCREEN_MENU; } }
+  else if (screenState == screenHTP || screenState == screenCreds) { if (backButtonHit()) { screenState = screenMenu; } }
 }
 void resetGame() {
   softDropHeld = false;
-  for (int r = 0; r < ROWS; r++) {
-    for (int c = 0; c < COLS; c++) {
-      board[r][c] = 0;
-      blockSide[r][c] = 0;
-    }
-  }
+  for (int r = 0; r < n; r++) { for (int c = 0; c < m; c++) { board[r][c] = 0; blockSide[r][c] = 0; } }
   nextQueue.clear();
   pieceBag.clear();
   colorBag.clear();
-  gravityDirection = SIDE_BOTTOM;
+  gravityDirection = sBottom;
   heldPiece = null;
   current = null;
   score = 0;
   lines = 0;
   level = 1;
   gameOver = false;
-  ensureQueueSize(5);
-  spawnNextPiece();
+  fixQueue(5);
+  spawnNext();
 }

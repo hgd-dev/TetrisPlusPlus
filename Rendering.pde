@@ -1,100 +1,102 @@
 void drawBoard() {
   noStroke();
   fill(60);
-  rect(BOARD_X, BOARD_Y, BOARD_W, BOARD_H);
-  for (int r = 0; r < ROWS; r++) {
-    for (int c = 0; c < COLS; c++) {
+  rect(bX, bY, bW, bH);
+  for (int r = 0; r < n; r++) {
+    for (int c = 0; c < m; c++) {
       int x = gridToPixelX(c), y = gridToPixelY(r);
       if (board[r][c] == 0) {
         fill(28);
-        rect(x, y, CELL, CELL);
+        rect(x, y, cell, cell);
       }
       else { drawBlockPixels(x, y, board[r][c], 255); }
     }
   }
 }
-void drawCurrentPiece() {
+void drawCur() {
   if (current == null) return;
   int[][] cells = getCells(current.kind, current.rot);
   for (int i = 0; i < 4; i++) {
     int c = current.col + cells[i][0], r = current.row + cells[i][1];
-    if (r >= 0 && r < ROWS) { drawBlockPixels(gridToPixelX(c), gridToPixelY(r), current.pieceColor, 255); }
+    if (r >= 0 && r < n) { drawBlockPixels(gridToPixelX(c), gridToPixelY(r), current.pieceColor, 255); }
   }
 }
-void drawGhostPiece() {
+void drawGhost() {
   if (!ghostEnabled || current == null || gameOver) { return; }
   int ghostRow = current.row;
-  int dy = fallDirection();
+  int dy = fallDir();
   while (canPlace(current, current.col, ghostRow + dy, current.rot)) { ghostRow += dy; }
   int[][] cells = getCells(current.kind, current.rot);
   for (int i = 0; i < 4; i++) {
     int c = current.col + cells[i][0], r = ghostRow + cells[i][1];
-    if (r >= 0 && r < ROWS) { drawBlockPixels(gridToPixelX(c), gridToPixelY(r), current.pieceColor, 65); }
+    if (r >= 0 && r < n) { drawBlockPixels(gridToPixelX(c), gridToPixelY(r), current.pieceColor, 65); }
   }
 }
 void drawSidePanel() {
   fill(235);
   textAlign(LEFT, TOP);
   textSize(24);
-  text("TETRIS++", SIDE_X, BOARD_Y);
+  text("TETRIS++", side, bY);
   textSize(14);
-  int y = BOARD_Y + 36;
-  text("Score", SIDE_X, y);
+  int y = bY + 36;
+  text("Score", side, y);
   textSize(18);
-  text("" + score, SIDE_X, y + 17);
+  text("" + score, side, y + 17);
   y += 46;
   textSize(14);
-  text("Lines", SIDE_X, y);
+  text("Lines", side, y);
   textSize(18);
-  text("" + lines, SIDE_X, y + 17);
+  text("" + lines, side, y + 17);
   y += 46;
   textSize(14);
-  text("Level", SIDE_X, y);
+  text("Level", side, y);
   textSize(18);
-  text("" + level, SIDE_X, y + 17);
+  text("" + level, side, y + 17);
   y += 56;
   textSize(14);
-  text("Hold", SIDE_X, y);
-  drawPreviewBox(SIDE_X, y + 22, 125, 72);
-  if (heldPiece != null) { drawMiniTetromino(heldPiece, SIDE_X + 10, y + 30, 14); }
+  text("Hold", side, y);
+  drawPreviewBox(side, y + 22, 125, 72);
+  if (heldPiece != null) { drawMini(heldPiece, side + 10, y + 30, 14); }
   y += 104;
   textSize(14);
-  text("Next", SIDE_X, y);
+  text("Next", side, y);
   for (int i = 0; i < 2; i++) {
     int boxY = y + 22 + i * 82;
-    drawPreviewBox(SIDE_X, boxY, 125, 72);
-    if (nextQueue.size() > i) { drawMiniTetromino(nextQueue.get(i), SIDE_X + 10, boxY + 8, 14); }
+    drawPreviewBox(side, boxY, 125, 72);
+    if (nextQueue.size() > i) { drawMini(nextQueue.get(i), side + 10, boxY + 8, 14); }
   }
   y += 202;
   textSize(13);
   fill(215);
-  text("Controls", SIDE_X, y);
+  text("Controls", side, y);
   y += 19;
-  text("Left/Right move", SIDE_X, y);
+  text("Left/Right move", side, y);
   y += 17;
-  text("A/D rotate", SIDE_X, y);
+  text("A/D rotate", side, y);
   y += 17;
-  text("S hard drop", SIDE_X, y);
+  text("S hard drop", side, y);
   y += 17;
-  text("Up hold/swap", SIDE_X, y);
+  text("Up hold/swap", side, y);
   y += 17;
-  text("Down soft drop", SIDE_X, y);
+  text("Down soft drop", side, y);
   y += 17;
-  text("F flip", SIDE_X, y);
+  if (flippingEnabled && flipMode == flipGrav) { text("F flip gravity", side, y); }
+  else if (flippingEnabled && flipMode == flipBoard) { text("F flip board", side, y); }
+  else { text("F flip", side, y); }
   y += 17;
-  text("Esc menu", SIDE_X, y);
+  text("Esc menu", side, y);
   y += 17;
-  text("R restart", SIDE_X, y);
+  text("R restart", side, y);
 }
 void drawGameOverOverlay() {
   fill(0, 180);
-  rect(BOARD_X, BOARD_Y, BOARD_W, BOARD_H);
+  rect(bX, bY, bW, bH);
   fill(255);
   textAlign(CENTER, CENTER);
   textSize(36);
-  text("GAME OVER", BOARD_X + BOARD_W / 2, BOARD_Y + BOARD_H / 2 - 30);
+  text("GAME OVER", bX + bW / 2, bY + bH / 2 - 30);
   textSize(18);
-  text("Press R to restart", BOARD_X + BOARD_W / 2, BOARD_Y + BOARD_H / 2 + 20);
+  text("Press R to restart", bX + bW / 2, bY + bH / 2 + 20);
 }
 void drawMenuScreen() {
   textAlign(CENTER, CENTER);
@@ -119,13 +121,20 @@ void drawOptionsScreen() {
   textSize(42);
   text("Options", width / 2, 90);
   int boxX = width / 2 - 130, boxY = height / 2 - 80;
-  drawCheckboxOption("Ghost piece", boxX, boxY, ghostEnabled);
-  drawCheckboxOption("Flipping", boxX, boxY + 44, flippingEnabled);
+  drawCheckbox("Ghost piece", boxX, boxY, ghostEnabled);
+  drawCheckbox("Flip", boxX, boxY + 44, flippingEnabled);
   if (flippingEnabled) {
+    drawOpt("Flip gravity", boxX + 28, boxY + 88, flipMode == flipGrav);
+    drawOpt("Flip board", boxX + 28, boxY + 122, flipMode == flipBoard);
     fill(190);
     textAlign(LEFT, TOP);
     textSize(13);
-    text("Press F during play to reverse gravity.", boxX, boxY + 88, 300, 50);
+    if (flipMode == flipGrav) {
+      text("Press F during play to reverse gravity.", boxX, boxY + 160, 300, 50);
+    }
+    else {
+      text("Press F during play to vertically reverse the board. Gravity stays downward.", boxX, boxY + 160, 300, 60);
+    }
   }
   noStroke();
 }
@@ -140,10 +149,10 @@ void drawHowToPlayScreen() {
     "S: hard drop\n" +
     "Up Arrow: hold the current piece, or swap if hold is already filled\n" +
     "Down Arrow: soft drop / speed up falling\n" +
-    "F: flip, if Flipping is enabled in Options\n" +
+    "F: flip, if Flip is enabled in Options\n" +
     "R: restart during a game\n" +
     "Esc: return to the menu\n\n" +
-    "The ghost piece shows where the current piece will land. You can turn it on or off in Options. Flipping reverses gravity.";
+    "The ghost piece shows where the current piece will land. You can turn it on or off in Options. Flip can reverse gravity or vertically reverse the board, depending on the selected flip mode.";
   drawTextPage("How to Play", body);
 }
 void drawCreditsScreen() {
@@ -190,7 +199,7 @@ void drawPreviewBox(int x, int y, int w, int h) {
   fill(24);
   rect(x + 5, y + 5, w - 10, h - 10);
 }
-void drawMiniTetromino(Tetromino t, int x, int y, int miniCell) {
+void drawMini(Tetromino t, int x, int y, int miniCell) {
   int[][] cells = getCells(t.kind, 0);
   int minX = 10, maxX = -10, minY = 10, maxY = -10;
   for (int i = 0; i < 4; i++) {
@@ -208,7 +217,7 @@ void drawMiniTetromino(Tetromino t, int x, int y, int miniCell) {
   fill(230);
   textAlign(LEFT, CENTER);
   textSize(13);
-  text(KIND_NAMES[t.kind], x + 100, y + 33);
+  text(kindNames[t.kind], x + 100, y + 33);
 }
 void drawMiniBlock(int x, int y, int s, int pieceColor) {
   noStroke();
@@ -222,16 +231,16 @@ void drawMiniBlock(int x, int y, int s, int pieceColor) {
 void drawBlockPixels(int x, int y, int pieceColor, int alphaValue) {
   noStroke();
   fill(red(pieceColor), green(pieceColor), blue(pieceColor), alphaValue);
-  rect(x, y, CELL, CELL);
+  rect(x, y, cell, cell);
   fill(255, alphaValue * 0.32f);
-  rect(x + 4, y + 4, CELL - 8, 5);
+  rect(x + 4, y + 4, cell - 8, 5);
   fill(0, alphaValue * 0.28f);
-  rect(x + 4, y + CELL - 9, CELL - 8, 5);
+  rect(x + 4, y + cell - 9, cell - 8, 5);
 }
-int gridToPixelX(int c) { return BOARD_X + BORDER + c * (CELL + BORDER); }
-int gridToPixelY(int r) { return BOARD_Y + BORDER + r * (CELL + BORDER); }
+int gridToPixelX(int c) { return bX + border + c * (cell + border); }
+int gridToPixelY(int r) { return bY + border + r * (cell + border); }
 
-void drawCheckboxOption(String label, int x, int y, boolean checked) {
+void drawCheckbox(String label, int x, int y, boolean checked) {
   noStroke();
   fill(235);
   textAlign(LEFT, CENTER);
@@ -250,7 +259,7 @@ void drawCheckboxOption(String label, int x, int y, boolean checked) {
   }
   noStroke();
 }
-void drawRadioOption(String label, int x, int y, boolean selected) {
+void drawOpt(String label, int x, int y, boolean selected) {
   noStroke();
   fill(225);
   textAlign(LEFT, CENTER);

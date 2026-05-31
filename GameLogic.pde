@@ -1,11 +1,10 @@
-void updateGravityAndLock() {
-  int now = millis();
-  int dy = fallDirection();
+void updateGL() {
+  int now = millis(), dy = fallDir();
   if (canPlace(current, current.col, current.row + dy, current.rot)) {
     lockStartTime = -1;
-    int fallInterval = gravityIntervalMs();
-    if (softDropHeld) { fallInterval = SOFT_DROP_INTERVAL_MS; }
-    if (now - lastFallTime >= fallInterval) {
+    int fallInt = gravInt();
+    if (softDropHeld) { fallInt = softDropT; }
+    if (now - lastFallTime >= fallInt) {
       current.row += dy;
       if (softDropHeld) { score += 1; }
       lastFallTime = now;
@@ -13,23 +12,23 @@ void updateGravityAndLock() {
   }
   else {
     if (lockStartTime < 0) { lockStartTime = now; }
-    else if (now - lockStartTime >= LOCK_DELAY_MS) { lockCurrentPiece(); }
+    else if (now - lockStartTime >= lockDelay) { lockCur(); }
   }
 }
-int gravityIntervalMs() { return max(60, 1000 - (level - 1) * 80); }
-int fallDirection() {
-  if (flippingEnabled) { return gravityDirection; }
-  return SIDE_BOTTOM;
+int gravInt() { return max(60, 1000 - (level - 1) * 80); }
+int fallDir() {
+  if (flippingEnabled && flipMode == flipGrav) { return gravityDirection; }
+  return sBottom;
 }
-boolean tryMoveCurrent(int dx, int dy, boolean playerMove) {
+boolean moveCur(int dx, int dy, boolean playerMove) {
   if (canPlace(current, current.col + dx, current.row + dy, current.rot)) {
     current.col += dx; current.row += dy;
-    if (playerMove) { resetLockDelayAfterSuccessfulAction(); }
+    if (playerMove) { resLockDelay(); }
     return true;
   }
   return false;
 }
-void tryRotateCurrent(int direction) {
+void rotCur(int direction) {
   int oldRot = current.rot;
   int newRot = (current.rot + direction + 4) % 4;
   int[][] kicks = getKickTests(current.kind, oldRot, newRot);
@@ -39,228 +38,237 @@ void tryRotateCurrent(int direction) {
     if (canPlace(current, kickedCol, kickedRow, newRot)) {
       current.col = kickedCol; current.row = kickedRow;
       current.rot = newRot;
-      resetLockDelayAfterSuccessfulAction();
+      resLockDelay();
       return;
     }
   }
 }
-void resetLockDelayAfterSuccessfulAction() {
-  if (canPlace(current, current.col, current.row + fallDirection(), current.rot)) {
+void resLockDelay() {
+  if (canPlace(current, current.col, current.row + fallDir(), current.rot)) {
     lockStartTime = -1;
     return;
   }
-  if (lockResets < MAX_LOCK_RESETS) {
+  if (lockResets < maxLRes) {
     lockStartTime = millis();
     lockResets++;
   }
 }
-void hardDropCurrent() {
+void hardDropCur() {
   int dropped = 0;
-  int dy = fallDirection();
+  int dy = fallDir();
   while (canPlace(current, current.col, current.row + dy, current.rot)) {
     current.row += dy;
     dropped++;
   }
   score += dropped * 2;
-  lockCurrentPiece();
+  lockCur();
 }
-void holdCurrentPiece() {
-  if (holdUsedThisPiece) { return; }
+void holdCur() {
+  if (holdUsed) { return; }
   Tetromino oldCurrent = current.toTetromino();
   if (heldPiece == null) {
     heldPiece = oldCurrent;
-    spawnNextPiece();
-    holdUsedThisPiece = true;
+    spawnNext();
+    holdUsed = true;
   }
   else {
-    spawnSpecificPiece(heldPiece);
+    spawnSpecific(heldPiece);
     heldPiece = oldCurrent;
-    holdUsedThisPiece = true;
+    holdUsed = true;
   }
 }
-void lockCurrentPiece() {
+void lockCur() {
   int[][] cells = getCells(current.kind, current.rot);
-  int side = fallDirection();
+  int side = fallDir();
   for (int i = 0; i < 4; i++) {
     int c = current.col + cells[i][0];
     int r = current.row + cells[i][1];
-    if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
+    if (r >= 0 && r < n && c >= 0 && c < m) {
       board[r][c] = current.pieceColor;
       blockSide[r][c] = side;
     }
   }
-  int cleared = clearFullLinesForSide(side);
+  int cleared = clearLinesSide(side);
   if (cleared > 0) {
     int[] lineScores = {0, 100, 300, 500, 800};
     score += lineScores[min(cleared, 4)] * level;
     lines += cleared;
     level = 1 + lines / 10;
   }
-  spawnNextPiece();
+  spawnNext();
 }
-int clearFullLinesForSide(int side) {
+int clearLinesSide(int side) {
   int cleared = 0;
-
-  if (side == SIDE_BOTTOM) {
-    int r = ROWS - 1;
+  if (side == sBottom) {
+    int r = n - 1;
     while (r >= 0) {
-      if (isFullLineForSide(r, side)) {
-        shiftSideRowsAfterClear(r, side);
-        cleared++;
-        // Recheck this same row because the row shifted into it may also be full.
-      }
+      if (fullLineSide(r, side)) { shiftSide(r, side); cleared++; }
       else { r--; }
     }
   }
   else {
     int r = 0;
-    while (r < ROWS) {
-      if (isFullLineForSide(r, side)) {
-        shiftSideRowsAfterClear(r, side);
-        cleared++;
-        // Recheck this same row because the row shifted into it may also be full.
-      }
+    while (r < n) {
+      if (fullLineSide(r, side)) { shiftSide(r, side); cleared++; }
       else { r++; }
     }
   }
-
   return cleared;
 }
-boolean isFullLineForSide(int r, int side) {
-  for (int c = 0; c < COLS; c++) {
+boolean fullLineSide(int r, int side) {
+  for (int c = 0; c < m; c++) {
     if (board[r][c] == 0 || blockSide[r][c] != side) { return false; }
   }
   return true;
 }
-boolean rowHasOppositeSide(int r, int side) {
+boolean hasOppSide(int r, int side) {
   int opposite = -side;
-  for (int c = 0; c < COLS; c++) {
+  for (int c = 0; c < m; c++) {
     if (blockSide[r][c] == opposite) { return true; }
   }
   return false;
 }
-void copySideRowOnly(int fromRow, int toRow, int side) {
-  for (int c = 0; c < COLS; c++) {
+void copySideRow(int fromRow, int toRow, int side) {
+  for (int c = 0; c < m; c++) {
     if (blockSide[toRow][c] == -side) { continue; }
-
     if (blockSide[fromRow][c] == side) {
       board[toRow][c] = board[fromRow][c];
       blockSide[toRow][c] = side;
     }
-    else {
-      board[toRow][c] = 0;
-      blockSide[toRow][c] = 0;
-    }
+    else { board[toRow][c] = 0; blockSide[toRow][c] = 0; }
   }
 }
-void clearSideCellsInRow(int r, int side) {
-  for (int c = 0; c < COLS; c++) {
-    if (blockSide[r][c] == side) {
-      board[r][c] = 0;
-      blockSide[r][c] = 0;
-    }
-  }
-}
-void shiftSideRowsAfterClear(int clearedRow, int side) {
-  clearSideCellsInRow(clearedRow, side);
-
-  if (side == SIDE_BOTTOM) {
+void clearSideRow(int r, int side) { for (int c = 0; c < m; c++) { if (blockSide[r][c] == side) { board[r][c] = 0; blockSide[r][c] = 0; } } }
+void shiftSide(int clearedRow, int side) {
+  clearSideRow(clearedRow, side);
+  if (side == sBottom) {
     int writeRow = clearedRow;
-    while (writeRow > 0 && !rowHasOppositeSide(writeRow - 1, side)) {
-      copySideRowOnly(writeRow - 1, writeRow, side);
+    while (writeRow > 0 && !hasOppSide(writeRow - 1, side)) {
+      copySideRow(writeRow - 1, writeRow, side);
       writeRow--;
     }
-    clearSideCellsInRow(writeRow, side);
+    clearSideRow(writeRow, side);
   }
   else {
     int writeRow = clearedRow;
-    while (writeRow < ROWS - 1 && !rowHasOppositeSide(writeRow + 1, side)) {
-      copySideRowOnly(writeRow + 1, writeRow, side);
+    while (writeRow < n - 1 && !hasOppSide(writeRow + 1, side)) {
+      copySideRow(writeRow + 1, writeRow, side);
       writeRow++;
     }
-    clearSideCellsInRow(writeRow, side);
+    clearSideRow(writeRow, side);
   }
 }
 boolean canPlace(ActivePiece p, int testCol, int testRow, int testRot) {
   int[][] cells = getCells(p.kind, testRot);
   for (int i = 0; i < 4; i++) {
     int c = testCol + cells[i][0], r = testRow + cells[i][1];
-    if (c < 0 || c >= COLS || r >= ROWS) { return false; }
-    if (r < 0) {
-      if (fallDirection() == SIDE_TOP) { return false; }
-    }
+    if (c < 0 || c >= m || r >= n) { return false; }
+    if (r < 0) { if (fallDir() == sTop) { return false; } }
     else if (board[r][c] != 0) { return false; }
   }
   return true;
 }
-void spawnNextPiece() {
-  ensureQueueSize(5);
-  Tetromino next = nextQueue.remove(0);
-  ensureQueueSize(5);
-  spawnSpecificPiece(next);
-  holdUsedThisPiece = false;
+boolean inRange(ActivePiece p, int testCol, int testRow, int testRot) {
+  int[][] cells = getCells(p.kind, testRot);
+  for (int i = 0; i < 4; i++) {
+    int c = testCol + cells[i][0], r = testRow + cells[i][1];
+    if (c < 0 || c >= m || r < 0 || r >= n) { return false; }
+    if (board[r][c] != 0) { return false; }
+  }
+  return true;
 }
-void spawnSpecificPiece(Tetromino t) {
+int findSpawn(ActivePiece p, int spawnCol, int spawnRot) {
+  int[][] cells = getCells(p.kind, spawnRot);
+  int minY = cells[0][1], maxY = cells[0][1];
+  for (int i = 1; i < 4; i++) { minY = min(minY, cells[i][1]); maxY = max(maxY, cells[i][1]); }
+  int dy = fallDir();
+  if (dy == sTop) { for (int r = n - 1 - maxY; r >= -minY; r--) { if (inRange(p, spawnCol, r, spawnRot)) { return r; } } }
+  else { for (int r = -minY; r <= n - 1 - maxY; r++) { if (inRange(p, spawnCol, r, spawnRot)) { return r; } } }
+  return -999;
+}
+void spawnNext() {
+  fixQueue(5);
+  Tetromino next = nextQueue.remove(0);
+  fixQueue(5);
+  spawnSpecific(next);
+  holdUsed = false;
+}
+void spawnSpecific(Tetromino t) {
   current = new ActivePiece(t.kind, t.pieceColor);
   current.col = 3;
   current.rot = 0;
-  boolean spawned = false;
-  int dy = fallDirection();
-  if (flippingEnabled) {
-    if (dy == SIDE_TOP) {
-      // Falling up means the pile grows from the top, so spawn from the bottom side.
-      for (int r = ROWS - 1; r >= 0; r--) {
-        if (canPlace(current, current.col, r, current.rot)) {
-          current.row = r;
-          spawned = true;
-          break;
-        }
-      }
-    }
-    else {
-      // Falling down means the pile grows from the bottom, so spawn from the top side.
-      for (int r = -2; r < ROWS; r++) {
-        if (canPlace(current, current.col, r, current.rot)) {
-          current.row = r;
-          spawned = true;
-          break;
-        }
-      }
-    }
-  }
-  else {
-    current.row = -1;
-    spawned = canPlace(current, current.col, current.row, current.rot);
-  }
+  int spawnRow = findSpawn(current, current.col, current.rot);
+  boolean spawned = (spawnRow != -999);
+  if (spawned) { current.row = spawnRow; }
   lastFallTime = millis();
   lockStartTime = -1;
   lockResets = 0;
   if (!spawned) { gameOver = true; }
 }
-void ensureQueueSize(int wantedSize) {
-  while (nextQueue.size() < wantedSize) {
-    nextQueue.add(new Tetromino(drawPieceKindFromBag(), drawColorFromBag()));
-  }
-}
-int drawPieceKindFromBag() {
+void fixQueue(int wantedSize) { while (nextQueue.size() < wantedSize) { nextQueue.add(new Tetromino(getPiece(), getColor())); } }
+int getPiece() {
   if (pieceBag.size() == 0) {
     for (int k = 0; k < 7; k++) { pieceBag.add(k); }
     Collections.shuffle(pieceBag);
   }
   return pieceBag.remove(pieceBag.size() - 1);
 }
-int drawColorFromBag() {
+int getColor() {
   if (colorBag.size() == 0) {
     for (int i = 0; i < 7; i++) { colorBag.add(palette[i]); }
     Collections.shuffle(colorBag);
   }
   return colorBag.remove(colorBag.size() - 1);
 }
-
 void performFlip() {
   if (!flippingEnabled || gameOver || current == null) { return; }
+  if (flipMode == flipGrav) { flipGravity(); }
+  else if (flipMode == flipBoard) { flipBoardVert(); }
+}
+void flipGravity() {
   gravityDirection *= -1;
   lastFallTime = millis();
   lockStartTime = -1;
   lockResets = 0;
+}
+void flipBoardVert() {
+  gravityDirection = sBottom;
+  for (int r = 0; r < n / 2; r++) {
+    int mirrorR = n - 1 - r;
+    for (int c = 0; c < m; c++) {
+      int tempColor = board[r][c];
+      board[r][c] = board[mirrorR][c];
+      board[mirrorR][c] = tempColor;
+      int tempSide = blockSide[r][c];
+      blockSide[r][c] = mirrorSide(blockSide[mirrorR][c]);
+      blockSide[mirrorR][c] = mirrorSide(tempSide);
+    }
+  }
+  if (!pushCurMid()) {
+    gameOver = true;
+    return;
+  }
+  lastFallTime = millis();
+  lockStartTime = -1;
+  lockResets = 0;
+}
+int mirrorSide(int side) {
+  if (side == sTop) { return sBottom; }
+  if (side == sBottom) { return sTop; }
+  return 0;
+}
+boolean pushCurMid() {
+  if (current == null) { return true; }
+  int[][] cells = getCells(current.kind, current.rot);
+  int minY = cells[0][1], maxY = cells[0][1];
+  for (int i = 1; i < 4; i++) { minY = min(minY, cells[i][1]); maxY = max(maxY, cells[i][1]); }
+  int firstRow = -minY, lastRow = n - 1 - maxY;
+  if (inRange(current, current.col, current.row, current.rot)) { return true; }
+  for (int r = firstRow; r <= lastRow; r++) {
+    if (inRange(current, current.col, r, current.rot)) {
+      current.row = r;
+      return true;
+    }
+  }
+  return false;
 }
