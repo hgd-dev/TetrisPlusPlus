@@ -71,25 +71,25 @@ void drawSidePanel() {
   y += 202;
   textSize(13);
   fill(215);
-  text("Controls", side, y);
+  text("Controls:", side, y);
   y += 19;
-  text("Left/Right move", side, y);
+  text("Left/Right: move", side, y);
   y += 17;
-  text("A/D rotate", side, y);
+  text("A/D: rotate", side, y);
   y += 17;
-  text("S hard drop", side, y);
+  text("S: hard drop", side, y);
   y += 17;
-  text("Up hold/swap", side, y);
+  text("Up: hold/swap", side, y);
   y += 17;
-  text("Down soft drop", side, y);
+  text("Down: soft drop", side, y);
   y += 17;
   if (flippingEnabled && flipMode == flipGrav) { text("F flip gravity", side, y); }
   else if (flippingEnabled && flipMode == flipBoard) { text("F flip board", side, y); }
-  else { text("F flip", side, y); }
+  else { text("F: flip", side, y); }
   y += 17;
-  text("Esc menu", side, y);
+  text("Esc: menu", side, y);
   y += 17;
-  text("R restart", side, y);
+  text("R: restart", side, y);
 }
 void drawGameOverOverlay() {
   fill(0, 180);
@@ -139,34 +139,33 @@ void drawOptionsScreen() {
       text("Press F during play to reverse gravity.", boxX, boxY + 244, 300, 50);
     }
     else {
-      text("Press F during play to vertically reverse the board. Gravity stays downward.", boxX, boxY + 244, 300, 60);
+      text("Press F during play to vertically reverse the board.", boxX, boxY + 244, 300, 60);
     }
   }
   noStroke();
 }
 void drawHowToPlayScreen() {
   String body =
-    "Goal:\n" +
-    "Place falling tetrominoes to complete full horizontal lines. Completed lines disappear and give points.\n\n" +
+    "Goal: Place falling tetrominoes to complete full horizontal lines. Completed lines disappear and add to points.\n\n" +
     "Controls:\n" +
-    "Left/Right: move piece\n" +
-    "A: rotate counterclockwise\n" +
-    "D: rotate clockwise\n" +
+    "Left/right arrow keys: move piece\n" +
+    "A/D: rotate counterclockwise & clockwise\n" +
     "S: hard drop\n" +
-    "Up Arrow: hold the current piece, or swap if hold is already filled\n" +
-    "Down Arrow: soft drop / speed up falling\n" +
-    "F: flip, if Flip is enabled in Options\n" +
-    "R: restart during a game\n" +
+    "Up Arrow: hold or swap hold the current piece\n" +
+    "Down Arrow: soft drop -> speed up falling\n" +
+    "F: flip if enabled, either for gravity or board\n" +
+    "R: restart a game\n" +
     "Esc: return to the menu\n\n" +
-    "Classic uses normal line clears. Sandify turns pieces into tiny grains when they touch sand or the floor. A same-color connected path from the left wall to the right wall clears that whole connected color group. Flip can reverse gravity or vertically reverse the board, depending on the selected flip mode.";
+    "Classic uses normal line clears. Sandify turns pieces into tiny grains when they touch sand or the floor. A same-color connected path from the left wall to the right wall clears that whole connected color group. Flipping will reverse gravity or vertically reverse the board, depending on the selected flip mode.";
   drawTextPage("How to Play", body);
 }
 void drawCreditsScreen() {
   String body =
-    "Tetris++\n\n" +
-    "Created in Processing / Java.\n\n" +
-    "Programming, UI, and gameplay implementation by: Your Name Here\n\n" +
-    "Features include 7-bag randomization, SRS rotations, hold, next queue, scoring, soft drop, hard drop, and line clears.";
+    "Tetris++ by Velvetal\n\n" +
+    "Created in Processing & Java.\n\n" +
+    "Programming, UI, and flip ideation by Velvetal\n\n" +
+    "Originals: Tetris & Sandtrix by Alexey Pajitnov & mslivo\n\n" +
+    "Standard features included such as 7-bag and SRS, with add-ons of gravity flip, board flip, and sandification.";
   drawTextPage("Credits", body);
 }
 void drawTextPage(String heading, String body) {
