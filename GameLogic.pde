@@ -1,4 +1,11 @@
 void updateGL() {
+  if (gameMode == modeSand) {
+    updateSandGame();
+    handleSpawnDelay();
+    return;
+  }
+  if (waitingSpawn) { handleSpawnDelay(); return; }
+  if (current == null) { return; }
   int now = millis(), dy = fallDir();
   if (canPlace(current, current.col, current.row + dy, current.rot)) {
     lockStartTime = -1;
@@ -29,6 +36,7 @@ boolean moveCur(int dx, int dy, boolean playerMove) {
   return false;
 }
 void rotCur(int direction) {
+  if (gameMode == modeSand) { sandRot(direction); return; }
   int oldRot = current.rot;
   int newRot = (current.rot + direction + 4) % 4;
   int[][] kicks = getKickTests(current.kind, oldRot, newRot);
@@ -54,6 +62,7 @@ void resLockDelay() {
   }
 }
 void hardDropCur() {
+  if (gameMode == modeSand) { sandHardDrop(); return; }
   int dropped = 0;
   int dy = fallDir();
   while (canPlace(current, current.col, current.row + dy, current.rot)) {
@@ -78,6 +87,7 @@ void holdCur() {
   }
 }
 void lockCur() {
+  if (gameMode == modeSand) { lockSandCur(); return; }
   int[][] cells = getCells(current.kind, current.rot);
   int side = fallDir();
   for (int i = 0; i < 4; i++) {
@@ -95,7 +105,8 @@ void lockCur() {
     lines += cleared;
     level = 1 + lines / 10;
   }
-  spawnNext();
+  current = null;
+  queueSpawn();
 }
 int clearLinesSide(int side) {
   int cleared = 0;
@@ -186,6 +197,19 @@ int findSpawn(ActivePiece p, int spawnCol, int spawnRot) {
   else { for (int r = -minY; r <= n - 1 - maxY; r++) { if (inRange(p, spawnCol, r, spawnRot)) { return r; } } }
   return -999;
 }
+void queueSpawn() {
+  if (waitingSpawn) { return; }
+  waitingSpawn = true;
+  spawnAt = millis() + spawnDelay;
+}
+void handleSpawnDelay() {
+  if (!waitingSpawn) { return; }
+  if (gameMode == modeSand && sandClearActive) { return; }
+  if (millis() < spawnAt) { return; }
+  waitingSpawn = false;
+  spawnAt = -1;
+  spawnNext();
+}
 void spawnNext() {
   fixQueue(5);
   Tetromino next = nextQueue.remove(0);
@@ -197,6 +221,14 @@ void spawnSpecific(Tetromino t) {
   current = new ActivePiece(t.kind, t.pieceColor);
   current.col = 3;
   current.rot = 0;
+  if (gameMode == modeSand) {
+    boolean spawned = initSandCur();
+    lastFallTime = millis();
+    lockStartTime = -1;
+    lockResets = 0;
+    if (!spawned) { gameOver = true; }
+    return;
+  }
   int spawnRow = findSpawn(current, current.col, current.rot);
   boolean spawned = (spawnRow != -999);
   if (spawned) { current.row = spawnRow; }
@@ -232,6 +264,7 @@ void flipGravity() {
   lockResets = 0;
 }
 void flipBoardVert() {
+  if (gameMode == modeSand) { flipSandBoardVert(); return; }
   gravityDirection = sBottom;
   for (int r = 0; r < n / 2; r++) {
     int mirrorR = n - 1 - r;

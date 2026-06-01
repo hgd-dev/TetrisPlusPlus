@@ -1,4 +1,5 @@
 void drawBoard() {
+  if (gameMode == modeSand) { drawSandBoard(); return; }
   noStroke();
   fill(60);
   rect(bX, bY, bW, bH);
@@ -14,6 +15,7 @@ void drawBoard() {
   }
 }
 void drawCur() {
+  if (gameMode == modeSand) { drawSandCur(); return; }
   if (current == null) return;
   int[][] cells = getCells(current.kind, current.rot);
   for (int i = 0; i < 4; i++) {
@@ -22,6 +24,7 @@ void drawCur() {
   }
 }
 void drawGhost() {
+  if (gameMode == modeSand) { return; }
   if (!ghostEnabled || current == null || gameOver) { return; }
   int ghostRow = current.row;
   int dy = fallDir();
@@ -120,20 +123,23 @@ void drawOptionsScreen() {
   fill(255);
   textSize(42);
   text("Options", width / 2, 90);
-  int boxX = width / 2 - 130, boxY = height / 2 - 80;
-  drawCheckbox("Ghost piece", boxX, boxY, ghostEnabled);
-  drawCheckbox("Flip", boxX, boxY + 44, flippingEnabled);
+  int boxX = width / 2 - 130, boxY = height / 2 - 110;
+  drawOpt("Classic", boxX + 28, boxY, gameMode == modeClassic);
+  drawOpt("Sandify", boxX + 28, boxY + 34, gameMode == modeSand);
+  if (gameMode == modeClassic) { drawCheckbox("Ghost piece", boxX, boxY + 84, ghostEnabled); }
+  else { drawCheckboxDisabled("Ghost piece", boxX, boxY + 84); }
+  drawCheckbox("Flip", boxX, boxY + 128, flippingEnabled);
   if (flippingEnabled) {
-    drawOpt("Flip gravity", boxX + 28, boxY + 88, flipMode == flipGrav);
-    drawOpt("Flip board", boxX + 28, boxY + 122, flipMode == flipBoard);
+    drawOpt("Flip gravity", boxX + 28, boxY + 172, flipMode == flipGrav);
+    drawOpt("Flip board", boxX + 28, boxY + 206, flipMode == flipBoard);
     fill(190);
     textAlign(LEFT, TOP);
     textSize(13);
     if (flipMode == flipGrav) {
-      text("Press F during play to reverse gravity.", boxX, boxY + 160, 300, 50);
+      text("Press F during play to reverse gravity.", boxX, boxY + 244, 300, 50);
     }
     else {
-      text("Press F during play to vertically reverse the board. Gravity stays downward.", boxX, boxY + 160, 300, 60);
+      text("Press F during play to vertically reverse the board. Gravity stays downward.", boxX, boxY + 244, 300, 60);
     }
   }
   noStroke();
@@ -152,7 +158,7 @@ void drawHowToPlayScreen() {
     "F: flip, if Flip is enabled in Options\n" +
     "R: restart during a game\n" +
     "Esc: return to the menu\n\n" +
-    "The ghost piece shows where the current piece will land. You can turn it on or off in Options. Flip can reverse gravity or vertically reverse the board, depending on the selected flip mode.";
+    "Classic uses normal line clears. Sandify turns pieces into tiny grains when they touch sand or the floor. A same-color connected path from the left wall to the right wall clears that whole connected color group. Flip can reverse gravity or vertically reverse the board, depending on the selected flip mode.";
   drawTextPage("How to Play", body);
 }
 void drawCreditsScreen() {
@@ -160,7 +166,7 @@ void drawCreditsScreen() {
     "Tetris++\n\n" +
     "Created in Processing / Java.\n\n" +
     "Programming, UI, and gameplay implementation by: Your Name Here\n\n" +
-    "Features include 7-bag randomization, SRS rotations, hold, next queue, ghost piece, scoring, soft drop, hard drop, and line clears.";
+    "Features include 7-bag randomization, SRS rotations, hold, next queue, scoring, soft drop, hard drop, and line clears.";
   drawTextPage("Credits", body);
 }
 void drawTextPage(String heading, String body) {
@@ -259,6 +265,19 @@ void drawCheckbox(String label, int x, int y, boolean checked) {
   }
   noStroke();
 }
+void drawCheckboxDisabled(String label, int x, int y) {
+  noStroke();
+  fill(125);
+  textAlign(LEFT, CENTER);
+  textSize(20);
+  text(label, x + 42, y + 14);
+  stroke(125);
+  strokeWeight(3);
+  fill(28);
+  rect(x, y, 26, 26, 4);
+  noStroke();
+}
+
 void drawOpt(String label, int x, int y, boolean selected) {
   noStroke();
   fill(225);
@@ -275,4 +294,41 @@ void drawOpt(String label, int x, int y, boolean selected) {
     ellipse(x + 13, y + 13, 12, 12);
   }
   noStroke();
+}
+
+void drawSandBoard() {
+  noStroke();
+  fill(16);
+  rect(sandBX, sandBY, sandW * sandPx, sandH * sandPx);
+  for (int y = 0; y < sandH; y++) {
+    for (int x = 0; x < sandW; x++) {
+      if (sand[y][x] != 0) {
+        fill(sand[y][x]);
+        rect(sandBX + x * sandPx, sandBY + y * sandPx, sandPx, sandPx);
+      }
+    }
+  }
+  if (sandClearWhite()) {
+    fill(255);
+    for (int i = 0; i < sandClearCount; i++) {
+      rect(sandBX + sandClearX[i] * sandPx, sandBY + sandClearY[i] * sandPx, sandPx, sandPx);
+    }
+  }
+  noFill();
+  stroke(255);
+  strokeWeight(1);
+  rect(sandBX - 1, sandBY - 1, sandW * sandPx + 1, sandH * sandPx + 1);
+  noStroke();
+}
+void drawSandCur() {
+  if (current == null) { return; }
+  int[][] cells = getCells(current.kind, current.rot);
+  noStroke();
+  fill(current.pieceColor);
+  for (int i = 0; i < 4; i++) {
+    int x = floor(sandCurX + cells[i][0] * gpb);
+    int y = floor(sandCurY + cells[i][1] * gpb);
+    if (y + gpb < 0 || y >= sandH) { continue; }
+    rect(sandBX + x * sandPx, sandBY + y * sandPx, gpb * sandPx, gpb * sandPx);
+  }
 }

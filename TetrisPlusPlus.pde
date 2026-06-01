@@ -12,6 +12,9 @@ final int softDropT = 40;
 final int screenMenu = 0, screenGame = 1, screenOpts = 2, screenHTP = 3, screenCreds = 4;
 int screenState = screenMenu;
 boolean ghostEnabled = true, softDropHeld = false;
+boolean leftHeld = false, rightHeld = false;
+final int modeClassic = 0, modeSand = 1;
+int gameMode = modeClassic;
 boolean flippingEnabled = false;
 final int flipGrav = 0, flipBoard = 1;
 int flipMode = flipGrav;
@@ -28,6 +31,8 @@ long score = 0;
 int lines = 0, level = 1;
 int lastFallTime = 0, lockStartTime = -1;
 int lockResets = 0;
+int spawnDelay = 250, spawnAt = -1;
+boolean waitingSpawn = false;
 int[] palette;
 PFont uiFont;
 void settings() { size(560, 660); }
@@ -65,9 +70,20 @@ void keyPressed() {
     if (key == ESC) { key = 0; screenState = screenMenu; }
     return;
   }
-  if (key == ESC) { key = 0; screenState = screenMenu; softDropHeld = false; return; }
+  if (key == ESC) { key = 0; screenState = screenMenu; softDropHeld = false; leftHeld = false; rightHeld = false; return; }
   if (key == 'r' || key == 'R') { resetGame(); return; }
   if (gameOver || current == null) return;
+  if (gameMode == modeSand) {
+    if (keyCode == LEFT) { leftHeld = true; }
+    else if (keyCode == RIGHT) { rightHeld = true; }
+    else if (keyCode == UP) { holdCur(); }
+    else if (keyCode == DOWN) { softDropHeld = true; }
+    else if (key == 'a' || key == 'A') { rotCur(-1); }
+    else if (key == 'd' || key == 'D') { rotCur(1); }
+    else if (key == 's' || key == 'S') { hardDropCur(); }
+    else if (key == 'f' || key == 'F') { performFlip(); }
+    return;
+  }
   if (keyCode == LEFT) { moveCur(-1, 0, true); }
   else if (keyCode == RIGHT) { moveCur(1, 0, true); }
   else if (keyCode == UP) { holdCur(); }
@@ -77,7 +93,11 @@ void keyPressed() {
   else if (key == 's' || key == 'S') { hardDropCur(); }
   else if (key == 'f' || key == 'F') { performFlip(); }
 }
-void keyReleased() { if (keyCode == DOWN) { softDropHeld = false; } }
+void keyReleased() {
+  if (keyCode == DOWN) { softDropHeld = false; }
+  if (keyCode == LEFT) { leftHeld = false; }
+  if (keyCode == RIGHT) { rightHeld = false; }
+}
 void mousePressed() {
   if (screenState == screenMenu) {
     int buttonW = 220, buttonH = 46, gap = 14;
@@ -91,27 +111,34 @@ void mousePressed() {
     else if (buttonHit(x, y + 3 * (buttonH + gap), buttonW, buttonH)) { screenState = screenCreds; }
   }
   else if (screenState == screenOpts) {
-    int boxX = width / 2 - 130, boxY = height / 2 - 80;
-    if (buttonHit(boxX, boxY, 280, 32)) { ghostEnabled = !ghostEnabled; }
-    else if (buttonHit(boxX, boxY + 44, 280, 32)) {
+    int boxX = width / 2 - 130, boxY = height / 2 - 110;
+    if (buttonHit(boxX + 28, boxY, 230, 30)) { gameMode = modeClassic; }
+    else if (buttonHit(boxX + 28, boxY + 34, 230, 30)) { gameMode = modeSand; }
+    else if (gameMode == modeClassic && buttonHit(boxX, boxY + 84, 280, 32)) { ghostEnabled = !ghostEnabled; }
+    else if (buttonHit(boxX, boxY + 128, 280, 32)) {
       flippingEnabled = !flippingEnabled;
       if (!flippingEnabled) { gravityDirection = sBottom; }
     }
-    else if (flippingEnabled && buttonHit(boxX + 28, boxY + 88, 230, 30)) { flipMode = flipGrav; }
-    else if (flippingEnabled && buttonHit(boxX + 28, boxY + 122, 230, 30)) { flipMode = flipBoard; gravityDirection = sBottom; }
+    else if (flippingEnabled && buttonHit(boxX + 28, boxY + 172, 230, 30)) { flipMode = flipGrav; }
+    else if (flippingEnabled && buttonHit(boxX + 28, boxY + 206, 230, 30)) { flipMode = flipBoard; gravityDirection = sBottom; }
     else if (backButtonHit()) { screenState = screenMenu; }
   }
   else if (screenState == screenHTP || screenState == screenCreds) { if (backButtonHit()) { screenState = screenMenu; } }
 }
 void resetGame() {
   softDropHeld = false;
+  leftHeld = false;
+  rightHeld = false;
   for (int r = 0; r < n; r++) { for (int c = 0; c < m; c++) { board[r][c] = 0; blockSide[r][c] = 0; } }
+  resetSand();
   nextQueue.clear();
   pieceBag.clear();
   colorBag.clear();
   gravityDirection = sBottom;
   heldPiece = null;
   current = null;
+  waitingSpawn = false;
+  spawnAt = -1;
   score = 0;
   lines = 0;
   level = 1;
