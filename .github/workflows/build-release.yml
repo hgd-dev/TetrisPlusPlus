@@ -59,7 +59,7 @@ jobs:
           elif [ "${{ matrix.os_name }}" = "macos" ]; then
             PROCESSING_CLI="$(find processing -path "*/Processing.app/Contents/MacOS/processing" | head -1)"
           else
-            PROCESSING_CLI="$(find processing -name processing -type f | head -1)"
+            PROCESSING_CLI="$(find processing -iname processing -type f | head -1)"
           fi
 
           if [ -z "$PROCESSING_CLI" ]; then
