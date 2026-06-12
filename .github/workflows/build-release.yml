@@ -55,11 +55,11 @@ jobs:
         shell: bash
         run: |
           if [ "${{ matrix.os_name }}" = "windows" ]; then
-            PROCESSING_CLI="$(find processing -name processing.exe | head -1)"
+            PROCESSING_CLI="$(find processing -iname processing.exe | head -1)"
           elif [ "${{ matrix.os_name }}" = "macos" ]; then
             PROCESSING_CLI="$(find processing -path "*/Processing.app/Contents/MacOS/processing" | head -1)"
           else
-            PROCESSING_CLI="$(find processing -name processing | head -1)"
+            PROCESSING_CLI="$(find processing -iname processing | head -1)"
           fi
 
           if [ -z "$PROCESSING_CLI" ]; then
