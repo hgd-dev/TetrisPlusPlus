@@ -1,0 +1,92 @@
+name: Build TetrisPlusPlus
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  PROCESSING_VERSION: "4.5.2"
+  SKETCH_NAME: "TetrisPlusPlus"
+  SKETCH_PATH: "${{ github.workspace }}"
+
+jobs:
+  build:
+    name: Build ${{ matrix.os_name }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            os_name: windows
+            processing_zip: processing-4.5.2-windows-x64.zip
+            processing_dir: processing-4.5.2
+            processing_cmd: processing-4.5.2/processing-java.exe
+
+          - os: macos-latest
+            os_name: macos
+            processing_zip: processing-4.5.2-macos-x64.zip
+            processing_dir: Processing.app
+            processing_cmd: Processing.app/Contents/MacOS/processing-java
+
+          - os: ubuntu-latest
+            os_name: linux
+            processing_zip: processing-4.5.2-linux-x64-portable.zip
+            processing_dir: processing-4.5.2
+            processing_cmd: processing-4.5.2/processing-java
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Download Processing
+        shell: bash
+        run: |
+          curl -L -o processing.zip "https://github.com/processing/processing4/releases/download/processing-1313-4.5.2/${{ matrix.processing_zip }}"
+          unzip processing.zip -d processing
+
+      - name: Export app
+        shell: bash
+        run: |
+          ./processing/${{ matrix.processing_cmd }} --sketch="$SKETCH_PATH" --output="$SKETCH_PATH/build-${{ matrix.os_name }}" --force --export
+
+      - name: Package app
+        shell: bash
+        run: |
+          cd "$SKETCH_PATH"
+          if [ "${{ matrix.os_name }}" = "linux" ]; then
+            tar -czf "${SKETCH_NAME}-linux.tar.gz" "build-linux"
+          else
+            7z a "${SKETCH_NAME}-${{ matrix.os_name }}.zip" "build-${{ matrix.os_name }}"
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TetrisPlusPlus-${{ matrix.os_name }}
+          path: |
+            TetrisPlusPlus-${{ matrix.os_name }}.zip
+            TetrisPlusPlus-linux.tar.gz
+          if-no-files-found: ignore
+
+  release:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Download builds
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: dist/**/*
