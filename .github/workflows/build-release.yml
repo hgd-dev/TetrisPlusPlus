@@ -1,0 +1,131 @@
+name: Build TetrisPlusPlus
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  PROCESSING_VERSION: "4.5.2"
+  PROCESSING_RELEASE: "processing-1313-4.5.2"
+  SKETCH_NAME: "TetrisPlusPlus"
+
+jobs:
+  build:
+    name: Build ${{ matrix.os_name }}
+    runs-on: ${{ matrix.runner }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os_name: windows
+            runner: windows-latest
+            processing_zip: processing-4.5.2-windows-x64-portable.zip
+            processing_cmd: processing/processing-4.5.2/processing-java.exe
+            package_name: TetrisPlusPlus-windows.zip
+
+          - os_name: macos
+            runner: macos-13
+            processing_zip: processing-4.5.2-macos-x64-portable.zip
+            processing_cmd: processing/Processing.app/Contents/MacOS/processing-java
+            package_name: TetrisPlusPlus-macos.zip
+
+          - os_name: linux
+            runner: ubuntu-latest
+            processing_zip: processing-4.5.2-linux-x64-portable.zip
+            processing_cmd: processing/processing-4.5.2/processing-java
+            package_name: TetrisPlusPlus-linux.tar.gz
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Download Processing
+        shell: bash
+        run: |
+          curl -L --fail -o processing.zip \
+            "https://github.com/processing/processing4/releases/download/${PROCESSING_RELEASE}/${{ matrix.processing_zip }}"
+
+          ls -lh processing.zip
+          unzip -q processing.zip -d processing
+
+      - name: Prepare sketch folder
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/${SKETCH_NAME}"
+
+          cp *.pde "$RUNNER_TEMP/${SKETCH_NAME}/"
+
+          if [ -f sketch.properties ]; then
+            cp sketch.properties "$RUNNER_TEMP/${SKETCH_NAME}/"
+          fi
+
+          if [ -d data ]; then
+            cp -R data "$RUNNER_TEMP/${SKETCH_NAME}/data"
+          fi
+
+          echo "Prepared sketch:"
+          find "$RUNNER_TEMP/${SKETCH_NAME}" -maxdepth 2 -type f
+
+      - name: Export app
+        shell: bash
+        run: |
+          "${{ matrix.processing_cmd }}" \
+            --sketch="$RUNNER_TEMP/${SKETCH_NAME}" \
+            --output="$RUNNER_TEMP/build-${{ matrix.os_name }}" \
+            --force \
+            --export
+
+      - name: Show exported files
+        shell: bash
+        run: |
+          find "$RUNNER_TEMP/build-${{ matrix.os_name }}" -maxdepth 3
+
+      - name: Package Windows app
+        if: matrix.os_name == 'windows'
+        shell: bash
+        run: |
+          7z a "${{ matrix.package_name }}" "$RUNNER_TEMP/build-${{ matrix.os_name }}/*"
+
+      - name: Package macOS app
+        if: matrix.os_name == 'macos'
+        shell: bash
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent "$RUNNER_TEMP/build-${{ matrix.os_name }}" "${{ matrix.package_name }}"
+
+      - name: Package Linux app
+        if: matrix.os_name == 'linux'
+        shell: bash
+        run: |
+          tar -czf "${{ matrix.package_name }}" -C "$RUNNER_TEMP" "build-${{ matrix.os_name }}"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TetrisPlusPlus-${{ matrix.os_name }}
+          path: ${{ matrix.package_name }}
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Download builds
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Show release files
+        run: find dist -type f
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: dist/**/*
