@@ -55,16 +55,16 @@ jobs:
         shell: bash
         run: |
           if [ "${{ matrix.os_name }}" = "windows" ]; then
-            PROCESSING_CLI="$(find processing -iname processing.exe | head -1)"
+            PROCESSING_CLI="$(find processing -iname "processing.exe" | head -1)"
           elif [ "${{ matrix.os_name }}" = "macos" ]; then
             PROCESSING_CLI="$(find processing -path "*/Processing.app/Contents/MacOS/processing" | head -1)"
           else
-            PROCESSING_CLI="$(find processing -iname processing | head -1)"
+            PROCESSING_CLI="$(find processing -name processing -type f | head -1)"
           fi
 
           if [ -z "$PROCESSING_CLI" ]; then
             echo "Could not find Processing CLI"
-            find processing -maxdepth 5
+            find processing -maxdepth 5 -type f \( -iname "*processing*" -o -iname "*.exe" \)
             exit 1
           fi
 
@@ -92,7 +92,7 @@ jobs:
       - name: Export app
         shell: bash
         run: |
-          "$PROCESSING_CLI" \
+          "$PROCESSING_CLI" cli \
             --sketch="$RUNNER_TEMP/${SKETCH_NAME}" \
             --output="$RUNNER_TEMP/build-${{ matrix.os_name }}" \
             --force \
