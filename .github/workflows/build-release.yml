@@ -51,26 +51,25 @@ jobs:
           ls -lh processing.zip
           unzip -q processing.zip -d processing
 
-          echo "Processing files:"
-          find processing -maxdepth 4 -type f | head -100
-
-      - name: Find processing-java
+      - name: Find Processing CLI
         shell: bash
         run: |
           if [ "${{ matrix.os_name }}" = "windows" ]; then
-            PROCESSING_JAVA="$(find processing -name processing-java.exe | head -1)"
+            PROCESSING_CLI="$(find processing -name processing.exe | head -1)"
+          elif [ "${{ matrix.os_name }}" = "macos" ]; then
+            PROCESSING_CLI="$(find processing -path "*/Processing.app/Contents/MacOS/processing" | head -1)"
           else
-            PROCESSING_JAVA="$(find processing -name processing-java | head -1)"
+            PROCESSING_CLI="$(find processing -name processing | head -1)"
           fi
 
-          if [ -z "$PROCESSING_JAVA" ]; then
-            echo "Could not find processing-java"
+          if [ -z "$PROCESSING_CLI" ]; then
+            echo "Could not find Processing CLI"
             find processing -maxdepth 5
             exit 1
           fi
 
-          echo "Found: $PROCESSING_JAVA"
-          echo "PROCESSING_JAVA=$PROCESSING_JAVA" >> "$GITHUB_ENV"
+          echo "Found Processing CLI: $PROCESSING_CLI"
+          echo "PROCESSING_CLI=$PROCESSING_CLI" >> "$GITHUB_ENV"
 
       - name: Prepare sketch folder
         shell: bash
@@ -93,7 +92,7 @@ jobs:
       - name: Export app
         shell: bash
         run: |
-          "$PROCESSING_JAVA" \
+          "$PROCESSING_CLI" \
             --sketch="$RUNNER_TEMP/${SKETCH_NAME}" \
             --output="$RUNNER_TEMP/build-${{ matrix.os_name }}" \
             --force \
