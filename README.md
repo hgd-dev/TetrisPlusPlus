@@ -5,7 +5,7 @@ The repository of my final project for APCSA, 2025-2026.
 
 Download the version for your operating system from the latest release:
 
-[⬇️ Download for Windows](https://github.com/YOUR_USERNAME/YOUR_REPO/releases/latest/download/TetrisPlusPlus-windows.zip)
+[⬇️ Download for Windows](https://github.com/hgd-dev/TetrisPlusPlus/actions/runs/27428680658/artifacts/7596982448)
 [⬇️ Download for macOS](https://github.com/YOUR_USERNAME/YOUR_REPO/releases/latest/download/TetrisPlusPlus-macos.zip)
 [⬇️ Download for Linux](https://github.com/YOUR_USERNAME/YOUR_REPO/releases/latest/download/TetrisPlusPlus-linux.tar.gz)
 
