@@ -1,5 +1,5 @@
 # Tetris++
-The repository of my final project for APCSA, 2025-2026.
+The official repository for the Tetris++ game, stacking updates such as sandification and gravity reversal on top of the original game.
 
 ## Download and Play
 
